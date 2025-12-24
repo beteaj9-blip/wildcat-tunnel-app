@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap, Award, Star, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap, Award, Star, CheckCircle2, XCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react';
 
 export default function GradePortal() {
     const [creds, setCreds] = useState({ id: "", pw: "" });
@@ -95,7 +95,6 @@ export default function GradePortal() {
         }
 
         const eligible = basis.length > 0 && basis.every(b => b.gwa >= PARANGAL_THRESHOLD);
-        
         return { eligible, basis };
     };
 
@@ -108,9 +107,9 @@ export default function GradePortal() {
         return (
             <div className={`flex items-center justify-center min-h-screen p-4 ${themeClass}`}>
                 <div className={`w-full max-w-sm p-8 border rounded-2xl shadow-2xl ${cardClass}`}>
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-6 text-blue-500">
                         <div className="flex items-center gap-2">
-                            <GraduationCap className="text-blue-500" />
+                            <GraduationCap />
                             <h1 className="text-xl font-black tracking-tighter italic uppercase">Wildcat Tunnel</h1>
                         </div>
                     </div>
@@ -144,7 +143,7 @@ export default function GradePortal() {
             )}
 
             <div className="max-w-6xl mx-auto">
-                <header className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 p-6 rounded-2xl border ${cardClass}`}>
+                <header className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 p-6 rounded-2xl border ${cardClass}`}>
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-900/40">
                             {data.userInfo?.fullName?.charAt(0)}
@@ -158,7 +157,7 @@ export default function GradePortal() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={toggleTheme} className="p-2 rounded-lg border border-gray-500/20 hover:bg-gray-500/10">
+                        <button onClick={toggleTheme} className="p-2 rounded-lg border border-gray-500/20 hover:bg-gray-500/10 transition-all">
                             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
                         <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500 hover:text-white transition-all">
@@ -166,6 +165,18 @@ export default function GradePortal() {
                         </button>
                     </div>
                 </header>
+
+                <div className={`w-full mb-8 p-4 rounded-2xl border flex items-start gap-4 transition-all ${theme === 'dark' ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                    <div className="mt-0.5">
+                        <ShieldCheck className={theme === 'dark' ? 'text-amber-500' : 'text-amber-600'} size={18} />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-amber-500' : 'text-amber-700'}`}>System Notice & Privacy Disclaimer</h4>
+                        <p className={`text-xs font-bold leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            This website serves as an <span className="text-blue-500">alternative frontend</span> for university grade viewing. We <span className="underline decoration-amber-500/50 underline-offset-4">do not store</span> any academic data, student IDs, or passwords on any external database. All information is fetched directly from the official WITS servers and exists only within your current session.
+                        </p>
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <aside className="space-y-3">
@@ -200,7 +211,7 @@ export default function GradePortal() {
                                     {isDeansList && (
                                         <button 
                                             onClick={() => setInfoModal({ show: true, type: 'deans' })}
-                                            className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500 hover:bg-amber-500/20 transition-all group"
+                                            className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500 hover:bg-amber-500/20 transition-all group shadow-sm"
                                         >
                                             <Award size={16} />
                                             <span className="text-[10px] font-black uppercase tracking-widest">Dean's Lister</span>
@@ -210,7 +221,7 @@ export default function GradePortal() {
                                     {parangalInfo.eligible && (
                                         <button 
                                             onClick={() => setInfoModal({ show: true, type: 'parangal' })}
-                                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-500 hover:bg-purple-500/20 transition-all group"
+                                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-500 hover:bg-purple-500/20 transition-all group shadow-sm"
                                         >
                                             <Star size={16} />
                                             <span className="text-[10px] font-black uppercase tracking-widest">Parangal Awardee</span>
