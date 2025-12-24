@@ -191,7 +191,7 @@ export default function GradePortal() {
                             <div className={`h-96 border rounded-2xl flex items-center justify-center ${cardClass}`}>
                                 <div className="text-center">
                                     <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                    <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Processing Data...</p>
+                                    <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Loading...</p>
                                 </div>
                             </div>
                         ) : viewing ? (
