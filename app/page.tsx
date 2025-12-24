@@ -169,24 +169,33 @@ export default function GradePortal() {
                                                 <th className="px-6 py-4">Code</th>
                                                 <th className="px-6 py-4">Subject</th>
                                                 <th className="px-6 py-4 text-center">Units</th>
-                                                {/* <th className="px-6 py-4 text-center text-blue-500">Midterm</th> */}
+                                                <th className="px-6 py-4 text-center text-blue-500">Midterm</th>
                                                 <th className="px-6 py-4 text-center text-green-600">Final</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-inherit">
-                                            {viewing.enrolledCourseGradeDetails?.map((c: any, i: number) => (
-                                                <tr key={i} className="hover:bg-gray-500/5 transition-colors">
-                                                    <td className="px-6 py-4 font-mono text-blue-500 text-[10px] font-bold">{c.courseCode}</td>
-                                                    <td className="px-6 py-4 text-xs font-medium">{c.courseTitle}</td>
-                                                    <td className="px-6 py-4 text-center text-[10px] opacity-50">{c.units}</td>
-                                                    {/* <td className="px-6 py-4 text-center font-mono text-xs">{c.gradeDetailMidterm?.grade || "-"}</td> */}
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-black ${c.gradeDetailFinal?.grade === '5.0' ? 'text-red-500 bg-red-500/10' : 'text-green-500 bg-green-500/10'}`}>
-                                                            {c.gradeDetailFinal?.grade || "-"}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {viewing.enrolledCourseGradeDetails?.map((c: any, i: number) => {
+                                                const midtermEntry = c.gradeDetails?.find((g: any) => g.periodName === "Midterm");
+                                                const midtermGrade = midtermEntry?.grade || "-";
+
+                                                return (
+                                                    <tr key={i} className="hover:bg-gray-500/5 transition-colors">
+                                                        <td className="px-6 py-4 font-mono text-blue-500 text-[10px] font-bold">{c.courseCode}</td>
+                                                        <td className="px-6 py-4 text-xs font-medium">{c.courseTitle}</td>
+                                                        <td className="px-6 py-4 text-center text-[10px] opacity-50">{c.units}</td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <span className="font-mono text-xs font-bold">
+                                                                {midtermGrade}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-black ${c.gradeDetailFinal?.grade === '5.0' ? 'text-red-500 bg-red-500/10' : 'text-green-500 bg-green-500/10'}`}>
+                                                                {c.gradeDetailFinal?.grade || "-"}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
