@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from 'react';
-import { Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap, Award, Star, CheckCircle2, XCircle, HelpCircle, Info, ShieldCheck } from 'lucide-react';
+import { 
+  Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap, 
+  Award, Star, CheckCircle2, XCircle, HelpCircle, Info, ShieldCheck,
+  Eye, EyeOff
+} from 'lucide-react';
 
 export default function GradePortal() {
     const [creds, setCreds] = useState({ id: "", pw: "" });
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+    const [showGrades, setShowGrades] = useState(true);
     const [modal, setModal] = useState<{ show: boolean, msg: string }>({ show: false, msg: "" });
     const [infoModal, setInfoModal] = useState<{ show: boolean, type: 'deans' | 'parangal' | null }>({ show: false, type: null });
     
@@ -19,6 +24,7 @@ export default function GradePortal() {
     const showError = (msg: string) => setModal({ show: true, msg });
 
     const startAuth = async () => {
+        setModal({ show: false, msg: "" }); 
         setAuthLoading(true);
         try {
             const loginRes = await fetch('/api/login', {
@@ -27,14 +33,16 @@ export default function GradePortal() {
                 body: JSON.stringify({ studentId: creds.id, password: creds.pw })
             });
             const auth = await loginRes.json();
+            
             if (auth?.token) {
+                setModal({ show: false, msg: "" }); 
                 setData(auth);
                 await fetchGrades(auth.token);
             } else {
-                showError("Invalid Student ID or Password.");
+                showError("Invalid Student ID or Password. Please try again.");
             }
         } catch (e) {
-            showError("Error during authentication.");
+            showError("Authentication failed. Please check your connection or try again later.");
         } finally {
             setAuthLoading(false);
         }
@@ -52,7 +60,7 @@ export default function GradePortal() {
             setGrades(sorted);
             if (sorted.length > 0) setViewing(sorted[0]);
         } catch (e) {
-            showError("Failed to fetch records.");
+            showError("Grade decryption failed. Your session may have expired.");
         } finally {
             setGradesLoading(false);
         }
@@ -60,16 +68,13 @@ export default function GradePortal() {
 
     const DEANS_THRESHOLD = 4.25;
     const PARANGAL_THRESHOLD = 4.4;
-
     const isDeansList = viewing?.gwa >= DEANS_THRESHOLD;
 
     const getParangalData = () => {
         if (!viewing || grades.length === 0) return { eligible: false, basis: [] };
-
         const currentYear = viewing.academicYear;
         const currentTerm = viewing.term;
         const isFirstYear = viewing.yearLevel === "First Year";
-
         let basis: any[] = [];
 
         if (isFirstYear && currentTerm === "First Semester") {
@@ -78,48 +83,44 @@ export default function GradePortal() {
             const yearParts = currentYear.split(' - ');
             const prevYearStr = `${parseInt(yearParts[0]) - 1} - ${yearParts[0]}`;
             const prev2ndSem = grades.find(g => g.academicYear === prevYearStr && g.term === "Second Semester");
-            
             basis = [
                 { year: currentYear, term: "First Semester", gwa: viewing.gwa },
                 ...(prev2ndSem ? [{ year: prevYearStr, term: "Second Semester", gwa: prev2ndSem.gwa }] : [])
             ];
         } else {
-            const yearParts = currentYear.split(' - ');
-            const nextYearStr = `${parseInt(yearParts[0]) + 1} - ${parseInt(yearParts[1]) + 1}`;
-            const next1stSem = grades.find(g => g.academicYear === nextYearStr && g.term === "First Semester");
-            
+            const sameYear1stSem = grades.find(g => g.academicYear === currentYear && g.term === "First Semester");
             basis = [
                 { year: currentYear, term: "Second Semester", gwa: viewing.gwa },
-                ...(next1stSem ? [{ year: nextYearStr, term: "First Semester", gwa: next1stSem.gwa }] : [])
+                ...(sameYear1stSem ? [{ year: currentYear, term: "First Semester", gwa: sameYear1stSem.gwa }] : [])
             ];
         }
-
         const eligible = basis.length > 0 && basis.every(b => b.gwa >= PARANGAL_THRESHOLD);
         return { eligible, basis };
     };
 
     const parangalInfo = getParangalData();
-
-    const themeClass = theme === 'dark' ? "bg-[#0d1117] text-gray-300" : "bg-gray-50 text-gray-800";
-    const cardClass = theme === 'dark' ? "bg-[#161b22] border-[#30363d]" : "bg-white border-gray-200 shadow-sm";
+    const themeClass = theme === 'dark' ? "bg-[#1a1616] text-gray-300" : "bg-gray-50 text-gray-800";
+    const cardClass = theme === 'dark' ? "bg-[#241f1f] border-[#3d3333]" : "bg-white border-gray-200 shadow-sm";
 
     if (!data) {
         return (
-            <div className={`flex items-center justify-center min-h-screen p-4 ${themeClass}`}>
-                <div className={`w-full max-w-sm p-8 border rounded-2xl shadow-2xl ${cardClass}`}>
-                    <div className="flex justify-between items-center mb-6 text-blue-500">
-                        <div className="flex items-center gap-2">
-                            <GraduationCap />
-                            <h1 className="text-xl font-black tracking-tighter italic uppercase">Wildcat Tunnel</h1>
+            <div className={`flex items-center justify-center min-h-screen p-4 transition-colors duration-500 ${themeClass}`}>
+                {modal.show && <ErrorModal msg={modal.msg} onClose={() => setModal({ show: false, msg: "" })} theme={theme} />}
+                
+                <div className={`w-full max-w-sm p-8 border rounded-3xl shadow-2xl ${cardClass}`}>
+                    <div className="flex flex-col items-center mb-8 gap-3 text-center">
+                        <div className="w-16 h-16 bg-[#800000] rounded-2xl flex items-center justify-center shadow-lg">
+                            <GraduationCap size={32} className="text-[#facc15]" />
                         </div>
+                        <h1 className="text-2xl font-black tracking-tighter italic uppercase text-white">Wildcat Tunnel</h1>
                     </div>
                     <div className="space-y-4">
-                        <input className={`w-full border p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 ${theme === 'dark' ? 'bg-[#0d1117] border-[#30363d]' : 'bg-white border-gray-300'}`} 
+                        <input className={`w-full border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#800000] transition-all ${theme === 'dark' ? 'bg-[#1a1616] border-[#3d3333] text-white' : 'bg-white border-gray-300'}`} 
                                placeholder="Student ID" value={creds.id} onChange={e => setCreds({...creds, id: e.target.value})} />
-                        <input className={`w-full border p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 ${theme === 'dark' ? 'bg-[#0d1117] border-[#30363d]' : 'bg-white border-gray-300'}`} 
+                        <input className={`w-full border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#800000] transition-all ${theme === 'dark' ? 'bg-[#1a1616] border-[#3d3333] text-white' : 'bg-white border-gray-300'}`} 
                                placeholder="Password" type="password" value={creds.pw} onChange={e => setCreds({...creds, pw: e.target.value})} />
-                        <button onClick={startAuth} disabled={authLoading} className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl text-white font-bold disabled:opacity-50">
-                            {authLoading ? "Signing In..." : "Sign In"}
+                        <button onClick={startAuth} disabled={authLoading} className="w-full bg-[#800000] hover:bg-[#990000] py-4 rounded-2xl text-white font-black transition-all disabled:opacity-50">
+                            {authLoading ? "SIGNING IN..." : "SIGN IN"}
                         </button>
                     </div>
                 </div>
@@ -128,7 +129,14 @@ export default function GradePortal() {
     }
 
     return (
-        <div className={`min-h-screen p-4 md:p-8 ${themeClass}`}>
+        <div className={`min-h-screen p-4 md:p-8 transition-colors duration-500 ${themeClass}`}>
+            <style jsx global>{`
+                ::-webkit-scrollbar { width: 8px; height: 8px; }
+                ::-webkit-scrollbar-track { background: ${theme === 'dark' ? '#1a1616' : '#f3f4f6'}; }
+                ::-webkit-scrollbar-thumb { background: #800000; border-radius: 10px; border: 2px solid ${theme === 'dark' ? '#1a1616' : '#f3f4f6'}; }
+                ::-webkit-scrollbar-thumb:hover { background: #facc15; }
+            `}</style>
+
             {modal.show && <ErrorModal msg={modal.msg} onClose={() => setModal({ show: false, msg: "" })} theme={theme} />}
             {infoModal.show && (
                 <InfoWindow 
@@ -138,60 +146,58 @@ export default function GradePortal() {
                     thresholds={{ deans: DEANS_THRESHOLD, parangal: PARANGAL_THRESHOLD }}
                     parangalBasis={parangalInfo.basis}
                     currentViewingGwa={viewing.gwa}
-                    viewingTerm={viewing.term}
+                    showGrades={showGrades}
                 />
             )}
 
             <div className="max-w-6xl mx-auto">
-                <header className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 p-6 rounded-2xl border ${cardClass}`}>
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-900/40">
+                <header className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 p-6 rounded-3xl border shadow-lg ${cardClass}`}>
+                    <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 bg-[#800000] border-2 border-[#facc15]/30 rounded-2xl flex items-center justify-center text-[#facc15] font-black text-2xl shadow-xl">
                             {data.userInfo?.fullName?.charAt(0)}
                         </div>
                         <div>
-                            <h2 className="text-xl font-black tracking-tight">{data.userInfo?.fullName}</h2>
-                            <div className="flex gap-3 text-[10px] font-mono mt-1">
-                                <span className="opacity-50">ID: {data.userInfo?.studentId}</span>
-                                <span className="text-green-500 font-bold">● ONLINE</span>
+                            <h2 className={`text-xl font-black tracking-tight text-white uppercase`}>{data.userInfo?.fullName}</h2>
+                            <div className="flex gap-3 text-[10px] font-mono font-bold mt-1">
+                                <span className="opacity-40">ID: {data.userInfo?.studentId}</span>
+                                <span className="text-[#facc15]">● ONLINE</span>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={toggleTheme} className="p-2 rounded-lg border border-gray-500/20 hover:bg-gray-500/10 transition-all">
+                        <button onClick={toggleTheme} className="p-3 rounded-xl border border-[#3d3333] hover:bg-white/5 transition-all text-[#facc15]">
                             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
-                        <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                        <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-5 py-3 text-xs font-black text-red-400 border border-red-900/20 rounded-xl hover:bg-red-500 hover:text-white transition-all">
                             <LogOut size={14} /> LOGOUT
                         </button>
                     </div>
                 </header>
 
-                <div className={`w-full mb-8 p-4 rounded-2xl border flex items-start gap-4 transition-all ${theme === 'dark' ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
-                    <div className="mt-0.5">
-                        <ShieldCheck className={theme === 'dark' ? 'text-amber-500' : 'text-amber-600'} size={18} />
-                    </div>
-                    <div className="space-y-1">
-                        <h4 className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-amber-500' : 'text-amber-700'}`}>System Notice & Privacy Disclaimer</h4>
-                        <p className={`text-xs font-bold leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            This website serves as an <span className="text-blue-500">alternative frontend</span> for university grade viewing. We <span className="underline decoration-amber-500/50 underline-offset-4">do not store</span> any academic data, student IDs, or passwords on any external database. All information is fetched directly from the official WITS servers and exists only within your current session.
+                <div className={`w-full mb-8 p-5 rounded-3xl border flex items-start gap-4 shadow-md ${theme === 'dark' ? 'bg-[#facc15]/5 border-[#facc15]/10' : 'bg-yellow-50 border-yellow-100'}`}>
+                    <ShieldCheck className="text-[#facc15] shrink-0" size={22} />
+                    <div className="space-y-1 text-left">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.1em] text-[#facc15]">Security & Privacy Policy</h4>
+                        <p className={`text-xs font-medium leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'}`}>
+                            This portal is an <span className="text-blue-500">alternative frontend</span> for grade viewing. We <span className="text-[#facc15] underline decoration-[#800000]/50 underline-offset-4">do not store</span> any academic data or credentials. All information is fetched in real-time from official servers and discarded upon logout.
                         </p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <aside className="space-y-3">
-                        <h3 className="text-[10px] font-bold opacity-50 uppercase tracking-widest mb-4">Academic History</h3>
+                        <h3 className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-4">Academic History</h3>
                         {gradesLoading ? (
-                            [1, 2, 3].map(i => <div key={i} className={`h-20 rounded-xl animate-pulse ${theme === 'dark' ? 'bg-[#161b22] border-[#30363d]' : 'bg-gray-200'}`} />)
+                            [1, 2, 3, 4].map(i => <div key={i} className={`h-16 rounded-2xl animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />)
                         ) : (
                             grades?.map((en, i) => (
                                 <div key={i} onClick={() => setViewing(en)} 
-                                     className={`p-4 rounded-xl cursor-pointer border flex justify-between items-center transition-all ${viewing === en ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-900/20' : cardClass + ' hover:border-blue-500/50'}`}>
+                                     className={`p-5 rounded-2xl cursor-pointer border flex justify-between items-center transition-all duration-300 ${viewing === en ? 'bg-[#800000] border-[#facc15]/50 text-white shadow-xl' : cardClass + ' hover:border-[#800000]/50'}`}>
                                     <div>
-                                        <div className="font-bold text-xs">{en.academicYear}</div>
-                                        <div className="text-[10px] opacity-60 uppercase font-black">{en.term}</div>
+                                        <div className={`font-black text-xs uppercase ${viewing === en ? 'text-[#facc15]' : ''}`}>{en.academicYear}</div>
+                                        <div className="text-[9px] opacity-60 uppercase font-bold mt-1 tracking-tight">{en.term}</div>
                                     </div>
-                                    <ChevronRight size={14} className={viewing === en ? 'opacity-100' : 'opacity-20'} />
+                                    <ChevronRight size={14} className={viewing === en ? 'text-[#facc15]' : 'opacity-20'} />
                                 </div>
                             ))
                         )}
@@ -199,85 +205,68 @@ export default function GradePortal() {
 
                     <main className="lg:col-span-3">
                         {gradesLoading ? (
-                            <div className={`h-96 border rounded-2xl flex items-center justify-center ${cardClass}`}>
-                                <div className="text-center">
-                                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                    <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Loading...</p>
-                                </div>
+                            <div className={`h-96 border rounded-3xl flex items-center justify-center ${cardClass}`}>
+                                <div className="animate-spin w-10 h-10 border-4 border-[#facc15] border-t-transparent rounded-full" />
                             </div>
                         ) : viewing ? (
-                            <div className="space-y-4">
-                                <div className="flex flex-wrap gap-3">
-                                    {isDeansList && (
-                                        <button 
-                                            onClick={() => setInfoModal({ show: true, type: 'deans' })}
-                                            className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500 hover:bg-amber-500/20 transition-all group shadow-sm"
-                                        >
-                                            <Award size={16} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Dean's Lister</span>
-                                            <HelpCircle size={12} className="opacity-40 group-hover:opacity-100" />
-                                        </button>
-                                    )}
-                                    {parangalInfo.eligible && (
-                                        <button 
-                                            onClick={() => setInfoModal({ show: true, type: 'parangal' })}
-                                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-500 hover:bg-purple-500/20 transition-all group shadow-sm"
-                                        >
-                                            <Star size={16} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Parangal Awardee</span>
-                                            <HelpCircle size={12} className="opacity-40 group-hover:opacity-100" />
-                                        </button>
-                                    )}
+                            <div className="space-y-5">
+                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <div className="flex flex-wrap gap-3">
+                                        {isDeansList && (
+                                            <button onClick={() => setInfoModal({ show: true, type: 'deans' })} className="flex items-center gap-2 px-4 py-2.5 bg-[#facc15]/10 border border-[#facc15]/20 rounded-xl text-[#facc15] hover:bg-[#facc15]/20 transition-all font-black text-[10px] uppercase group shadow-sm">
+                                                <Award size={16} /> Dean's Lister <HelpCircle size={12} className="opacity-30 group-hover:opacity-100" />
+                                            </button>
+                                        )}
+                                        {parangalInfo.eligible && (
+                                            <button onClick={() => setInfoModal({ show: true, type: 'parangal' })} className="flex items-center gap-2 px-4 py-2.5 bg-[#800000]/10 border border-[#800000]/20 rounded-xl text-[#ff8080] hover:bg-[#800000]/20 transition-all font-black text-[10px] uppercase group shadow-sm">
+                                                <Star size={16} /> Parangal Awardee <HelpCircle size={12} className="opacity-30 group-hover:opacity-100" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button onClick={() => setShowGrades(!showGrades)} className={`flex items-center gap-3 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${showGrades ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-[#facc15]/10 border-[#facc15]/30 text-[#facc15] hover:bg-[#facc15]/20'}`}>
+                                        {showGrades ? <EyeOff size={16} /> : <Eye size={16} />} {showGrades ? "Hide Grades" : "Show Grades"}
+                                    </button>
                                 </div>
 
-                                <div className={`border rounded-2xl overflow-hidden shadow-2xl ${theme === 'dark' ? 'shadow-black/50' : 'shadow-gray-200'} ${cardClass}`}>
-                                    <div className="p-6 border-b flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-500/5 border-[#30363d]/50">
+                                <div className={`border rounded-3xl overflow-hidden shadow-2xl ${cardClass}`}>
+                                    <div className={`p-8 border-b flex flex-col md:flex-row justify-between items-center gap-6 border-inherit ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
                                         <div className="text-left">
-                                            <h3 className="text-sm font-black uppercase tracking-wider">{viewing.academicYear}</h3>
-                                            <p className="text-[10px] opacity-50 font-bold uppercase">{viewing.term}</p>
+                                            <h3 className="text-base font-black uppercase tracking-wider text-white leading-none mb-2">{viewing.academicYear}</h3>
+                                            <p className="text-xs text-[#facc15] font-black uppercase tracking-widest">{viewing.term}</p>
                                         </div>
-                                        <div className="flex gap-4 text-[10px] font-mono">
-                                            <div className="px-3 py-1 rounded-full border border-green-500/30 text-green-500 bg-green-500/5 font-bold">GWA: {viewing.gwa}</div>
-                                            <div className="px-3 py-1 rounded-full border border-blue-500/30 text-blue-500 bg-blue-500/5 font-bold">Units: {viewing.totalUnits}</div>
+                                        <div className="flex gap-4 text-xs font-mono">
+                                            <div className={`px-5 py-2.5 rounded-2xl border border-[#facc15]/20 text-[#facc15] bg-[#facc15]/5 font-black transition-all duration-500 ${!showGrades ? 'blur-[3px] opacity-40 select-none' : ''}`}>GWA: {viewing.gwa}</div>
+                                            <div className={`px-5 py-2.5 rounded-2xl border border-[#800000]/30 text-[#ff8080] bg-[#800000]/5 font-black`}>Units: {viewing.totalUnits}</div>
                                         </div>
                                     </div>
 
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
-                                            <thead className={`text-[10px] uppercase font-bold ${theme === 'dark' ? 'bg-black/20' : 'bg-gray-100'}`}>
-                                                <tr className="border-b border-inherit">
-                                                    <th className="px-6 py-4">Code</th>
-                                                    <th className="px-6 py-4">Subject</th>
-                                                    <th className="px-6 py-4 text-center">Units</th>
-                                                    <th className="px-6 py-4 text-center text-blue-500">Midterm</th>
-                                                    <th className="px-6 py-4 text-center text-green-600">Final</th>
-                                                    <th className="px-6 py-4 text-center">Status</th>
+                                            <thead className={`text-[10px] uppercase font-black tracking-widest ${theme === 'dark' ? 'bg-[#1a1616]' : 'bg-gray-100'} border-b border-inherit`}>
+                                                <tr>
+                                                    <th className="px-8 py-5 text-[#facc15]">Code</th><th className="px-8 py-5 text-white">Subject</th><th className="px-8 py-5 text-center">Units</th><th className="px-8 py-5 text-center text-[#facc15]">Midterm</th><th className="px-8 py-5 text-center text-[#ff8080]">Final</th><th className="px-8 py-5 text-center text-white">Status</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-inherit">
+                                            <tbody className="divide-y divide-[#3d3333]">
                                                 {viewing.enrolledCourseGradeDetails?.map((c: any, i: number) => {
                                                     const midterm = c.gradeDetails?.find((g: any) => g.periodName === "Midterm")?.grade || "-";
                                                     const isPassed = c.remarks?.toUpperCase() === "PASSED";
+                                                    const isFailed = c.remarks?.toUpperCase() === "FAILED";
                                                     const finalGrade = c.gradeDetailFinal?.grade;
-
+                                                    
                                                     return (
-                                                        <tr key={i} className="hover:bg-gray-500/5 transition-colors">
-                                                            <td className="px-6 py-4 font-mono text-blue-500 text-[10px] font-bold">{c.courseCode}</td>
-                                                            <td className="px-6 py-4 text-xs font-medium leading-tight">{c.courseTitle}</td>
-                                                            <td className="px-6 py-4 text-center text-[10px] opacity-50">{c.units}</td>
-                                                            <td className="px-6 py-4 text-center font-mono text-xs">{midterm}</td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <span className={`px-2 py-1 rounded text-[10px] font-black ${finalGrade === '5.0' ? 'text-red-500 bg-red-500/10' : 'text-green-500 bg-green-500/10'}`}>
-                                                                    {finalGrade || "-"}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                {c.remarks ? (
-                                                                    <div className={`flex items-center justify-center gap-1 text-[10px] font-black uppercase ${isPassed ? 'text-green-500' : 'text-red-500'}`}>
-                                                                        {isPassed ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                                                                        {c.remarks}
-                                                                    </div>
-                                                                ) : <span className="opacity-20">-</span>}
+                                                        <tr key={i} className="hover:bg-white/5 transition-all">
+                                                            <td className="px-8 py-5 font-mono text-[#facc15] text-[11px] font-black">{c.courseCode}</td>
+                                                            <td className="px-8 py-5 text-xs font-bold leading-relaxed text-gray-300">{c.courseTitle}</td>
+                                                            <td className="px-8 py-5 text-center text-[11px] font-bold opacity-30">{c.units}</td>
+                                                            <td className={`px-8 py-5 text-center font-mono text-xs transition-all duration-500 ${!showGrades && midterm !== "-" ? 'blur-[3px] opacity-30 select-none' : 'text-[#facc15] font-black'}`}>{midterm}</td>
+                                                            <td className={`px-8 py-5 text-center font-black text-xs transition-all duration-500 ${!showGrades ? 'blur-[3px] opacity-30 select-none' : 'text-white'}`}>{finalGrade || "-"}</td>
+                                                            <td className="px-8 py-5 text-center">
+                                                                <div className={`inline-flex items-center gap-2 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-tighter ${isPassed ? 'text-green-400 bg-green-950/20' : isFailed ? 'text-red-400 bg-red-950/20' : 'text-gray-400 bg-gray-500/10'}`}>
+                                                                    {isPassed && <CheckCircle2 size={12} />}
+                                                                    {isFailed && <XCircle size={12} />}
+                                                                    {c.remarks || "-"}
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     );
@@ -287,11 +276,7 @@ export default function GradePortal() {
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className={`h-64 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl opacity-40 ${theme === 'dark' ? 'border-[#30363d]' : 'border-gray-300'}`}>
-                                <span className="text-[10px] uppercase tracking-widest">Select a semester</span>
-                            </div>
-                        )}
+                        ) : null}
                     </main>
                 </div>
             </div>
@@ -299,64 +284,47 @@ export default function GradePortal() {
     );
 }
 
-function InfoWindow({ type, onClose, theme, thresholds, parangalBasis, currentViewingGwa, viewingTerm }: { type: any, onClose: any, theme: string, thresholds: any, parangalBasis?: any[], currentViewingGwa: number, viewingTerm: string }) {
+function InfoWindow({ type, onClose, theme, thresholds, parangalBasis, currentViewingGwa, showGrades }: any) {
     const isDeans = type === 'deans';
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <div className={`w-full max-w-sm p-6 rounded-3xl border shadow-2xl animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-[#1c2128] border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className={`flex items-center gap-3 mb-4 ${isDeans ? 'text-amber-500' : 'text-purple-500'}`}>
-                    {isDeans ? <Award size={24} /> : <Star size={24} />}
-                    <h2 className="font-black uppercase tracking-tight">{isDeans ? "Dean's List" : "Parangal Award"}</h2>
+            <div className={`w-full max-w-sm p-8 rounded-[2.5rem] border shadow-2xl ${theme === 'dark' ? 'bg-[#241f1f] border-[#3d3333]' : 'bg-white border-gray-200'}`}>
+                <div className={`flex items-center gap-4 mb-6 ${isDeans ? 'text-[#facc15]' : 'text-[#ff8080]'}`}>
+                    {isDeans ? <Award size={32} /> : <Star size={32} />}
+                    <h2 className="font-black uppercase text-white text-xl leading-none">{isDeans ? "Dean's List" : "Parangal Award"}</h2>
                 </div>
-                
-                <div className="space-y-4 mb-6">
-                    <div className="space-y-2">
-                        <p className="text-[10px] uppercase font-bold opacity-50">Calculation Basis for this View:</p>
-                        {isDeans ? (
-                            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 flex justify-between items-center">
-                                <span className="text-[10px] font-bold">Current GWA</span>
-                                <span className="font-black text-amber-500">{currentViewingGwa}</span>
-                            </div>
-                        ) : (
-                            parangalBasis?.map((b, idx) => (
-                                <div key={idx} className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 flex justify-between items-center">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black">{b.year}</span>
-                                        <span className="text-[8px] opacity-50 uppercase">{b.term}</span>
-                                    </div>
-                                    <span className={`font-black ${b.gwa >= thresholds.parangal ? 'text-purple-500' : 'text-red-500'}`}>{b.gwa}</span>
+                <div className="space-y-4 mb-8">
+                    <p className="text-[10px] uppercase font-black opacity-30 tracking-widest">Calculation Basis:</p>
+                    {isDeans ? (
+                        <div className="p-5 rounded-3xl bg-[#facc15]/5 border border-[#facc15]/20 flex justify-between items-center">
+                            <span className="text-[10px] font-black text-white uppercase">Current GWA</span>
+                            <span className={`text-2xl font-black text-[#facc15] ${!showGrades ? 'blur-[3px] opacity-40' : ''}`}>{currentViewingGwa}</span>
+                        </div>
+                    ) : (
+                        parangalBasis?.map((b: any, idx: number) => (
+                            <div key={idx} className="p-4 rounded-2xl bg-[#800000]/5 border border-[#800000]/20 flex justify-between items-center">
+                                <div className="flex flex-col text-left">
+                                    <span className="text-[10px] font-black text-white">{b.year}</span>
+                                    <span className="text-[9px] opacity-50 uppercase text-[#facc15] font-black mt-0.5">{b.term}</span>
                                 </div>
-                            ))
-                        )}
-                    </div>
-
-                    <div className="space-y-2 text-xs leading-relaxed opacity-80 border-t border-inherit pt-4">
-                        {isDeans ? (
-                            <p>Awarded to students with a GWA of <span className="font-bold">{thresholds.deans}+</span> in the semester currently being viewed.</p>
-                        ) : (
-                            <p>Awarded based on the <span className="font-bold">{thresholds.parangal}+</span> maintenance across the cycle the current view belongs to. For a {viewingTerm}, the basis is its corresponding First or Second semester pair.</p>
-                        )}
-                    </div>
+                                <span className={`font-black text-xl ${!showGrades ? 'blur-[3px] opacity-40' : b.gwa >= thresholds.parangal ? 'text-[#facc15]' : 'text-red-500'}`}>{b.gwa}</span>
+                            </div>
+                        ))
+                    )}
                 </div>
-
-                <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-blue-900/20">
-                    Close
-                </button>
+                <button onClick={onClose} className="w-full py-4 bg-[#800000] text-white font-black rounded-2xl uppercase text-xs tracking-widest shadow-lg hover:bg-[#990000] transition-all">Close Analysis</button>
             </div>
         </div>
     );
 }
 
-function ErrorModal({ msg, onClose, theme }: { msg: string, onClose: () => void, theme: string }) {
+function ErrorModal({ msg, onClose, theme }: any) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className={`w-full max-md p-6 rounded-2xl border shadow-2xl ${theme === 'dark' ? 'bg-[#1c2128] border-red-900/30' : 'bg-white border-red-200'}`}>
-                <div className="flex items-center gap-3 text-red-500 mb-4">
-                    <ShieldAlert size={24} />
-                    <h2 className="font-black tracking-tight uppercase text-sm">System Error</h2>
-                </div>
-                <p className="text-sm opacity-70 mb-6">{msg}</p>
-                <button onClick={onClose} className="w-full py-3 bg-red-500 text-white font-bold rounded-xl uppercase text-xs tracking-widest">Dismiss</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className={`w-full max-w-md p-8 rounded-3xl border shadow-2xl ${theme === 'dark' ? 'bg-[#241f1f] border-red-900/20' : 'bg-white border-red-100'}`}>
+                <div className="flex items-center gap-4 text-red-500 mb-6 font-black tracking-tight uppercase"><ShieldAlert size={28} /> System Warning</div>
+                <p className="text-sm opacity-50 mb-8 font-bold leading-relaxed">{msg}</p>
+                <button onClick={onClose} className="w-full py-4 bg-red-600 text-white font-black rounded-2xl uppercase text-xs tracking-widest">Okay</button>
             </div>
         </div>
     );
