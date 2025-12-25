@@ -129,7 +129,6 @@ export default function GradePortal() {
     const themeClass = theme === 'dark' ? "bg-[#1a1616] text-gray-300" : "bg-gray-50 text-gray-800";
     const cardClass = theme === 'dark' ? "bg-[#241f1f] border-[#3d3333]" : "bg-white border-gray-200 shadow-sm";
 
-    // --- REFINED GRADE COLORING LOGIC ---
     const getGradeColor = (gradeStr: string, isMidterm: boolean) => {
         const g = parseFloat(gradeStr);
         if (isNaN(g)) return "";
