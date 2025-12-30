@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { decrypt, getHmacHeaders } from '@/lib/crypto-utils';
+import { decrypt, getHmacHeaders, encryptPayload } from '@/lib/crypto-utils';
 
 export async function GET(req: Request) {
     try {
@@ -19,10 +19,11 @@ export async function GET(req: Request) {
         });
 
         const rawText = await res.text();
-        const decrypted = decrypt(rawText);
+        const citData = decrypt(rawText);
 
-        if (!decrypted) return NextResponse.json({ error: "Nigga" }, { status: 500 });
-        return NextResponse.json(decrypted);
+        if (!citData) return NextResponse.json({ error: "Access Denied" }, { status: 500 });
+
+        return NextResponse.json({ payload: encryptPayload(citData) });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

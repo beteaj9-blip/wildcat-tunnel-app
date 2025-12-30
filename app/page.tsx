@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from 'react';
-import { 
-  Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap, 
-  Award, Star, CheckCircle2, XCircle, HelpCircle, Info, ShieldCheck,
-  Eye, EyeOff
+import {
+    Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap,
+    Award, Star, CheckCircle2, XCircle, HelpCircle, Info, ShieldCheck,
+    Eye, EyeOff
 } from 'lucide-react';
+import { decryptPayload } from '@/lib/crypto-utils';
 
 export default function GradePortal() {
     const [creds, setCreds] = useState({ id: "", pw: "" });
@@ -13,7 +14,7 @@ export default function GradePortal() {
     const [showGrades, setShowGrades] = useState(true);
     const [modal, setModal] = useState<{ show: boolean, msg: string }>({ show: false, msg: "" });
     const [infoModal, setInfoModal] = useState<{ show: boolean, type: 'deans' | 'parangal' | null }>({ show: false, type: null });
-    
+
     const [authLoading, setAuthLoading] = useState(false);
     const [gradesLoading, setGradesLoading] = useState(false);
     const [data, setData] = useState<any>(null);
@@ -52,16 +53,18 @@ export default function GradePortal() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ studentId: creds.id, password: creds.pw })
             });
-            const auth = await loginRes.json();
+
+            const wrapper = await loginRes.json();
+            const auth = decryptPayload(wrapper.payload);
+
             if (auth?.token) {
-                setModal({ show: false, msg: "" }); 
                 setData(auth);
                 await fetchGrades(auth.token);
             } else {
                 showError("Invalid Student ID or Password.");
             }
         } catch (e) {
-            showError("Authentication failed. Please check connection.");
+            showError("Authentication failed.");
         } finally {
             setAuthLoading(false);
         }
@@ -73,7 +76,10 @@ export default function GradePortal() {
             const gradeRes = await fetch('/api/grade', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const gradeData = await gradeRes.json();
+
+            const wrapper = await gradeRes.json();
+            const gradeData = decryptPayload(wrapper.payload);
+
             const list = gradeData?.items?.studentEnrollments || [];
             const sorted = [...list].sort((a, b) => (b.idStudentEnrollment || 0) - (a.idStudentEnrollment || 0));
             setGrades(sorted);
@@ -90,7 +96,7 @@ export default function GradePortal() {
 
     const getAwardStatus = () => {
         if (!viewing || grades.length === 0) return { deans: false, parangal: false, basis: [] };
-        
+
         const currentYearStr = viewing.academicYear;
         const currentTerm = viewing.term;
         const isFirstYear = viewing.yearLevel === "First Year";
@@ -147,8 +153,8 @@ export default function GradePortal() {
                         <h1 className="text-2xl font-black tracking-tighter italic uppercase text-white">Wildcat Tunnel</h1>
                     </div>
                     <div className="space-y-4">
-                        <input className={`w-full border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#800000] transition-all ${theme === 'dark' ? 'bg-[#1a1616] border-[#3d3333] text-white' : 'bg-white border-gray-300'}`} placeholder="Student ID" value={creds.id} onChange={e => setCreds({...creds, id: e.target.value})} />
-                        <input className={`w-full border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#800000] transition-all ${theme === 'dark' ? 'bg-[#1a1616] border-[#3d3333] text-white' : 'bg-white border-gray-300'}`} placeholder="Password" type="password" value={creds.pw} onChange={e => setCreds({...creds, pw: e.target.value})} />
+                        <input className={`w-full border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#800000] transition-all ${theme === 'dark' ? 'bg-[#1a1616] border-[#3d3333] text-white' : 'bg-white border-gray-300'}`} placeholder="Student ID" value={creds.id} onChange={e => setCreds({ ...creds, id: e.target.value })} />
+                        <input className={`w-full border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#800000] transition-all ${theme === 'dark' ? 'bg-[#1a1616] border-[#3d3333] text-white' : 'bg-white border-gray-300'}`} placeholder="Password" type="password" value={creds.pw} onChange={e => setCreds({ ...creds, pw: e.target.value })} />
                         <button onClick={startAuth} disabled={authLoading} className="w-full bg-[#800000] hover:bg-[#990000] py-4 rounded-2xl text-white font-black transition-all disabled:opacity-50 uppercase text-xs tracking-widest">{authLoading ? "SIGNING IN..." : "SIGN IN"}</button>
                     </div>
                 </div>
@@ -167,9 +173,9 @@ export default function GradePortal() {
 
             {modal.show && <ErrorModal msg={modal.msg} onClose={() => setModal({ show: false, msg: "" })} theme={theme} />}
             {infoModal.show && (
-                <InfoWindow 
-                    type={infoModal.type} 
-                    onClose={() => setInfoModal({ show: false, type: null })} 
+                <InfoWindow
+                    type={infoModal.type}
+                    onClose={() => setInfoModal({ show: false, type: null })}
                     theme={theme}
                     thresholds={{ deans: DEANS_MIN, parangal: PARANGAL_MIN }}
                     basis={awardInfo.basis}
@@ -203,7 +209,7 @@ export default function GradePortal() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <aside className="space-y-3">
                         <h3 className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-4 text-left">Academic History</h3>
-                        {gradesLoading ? [1, 2, 3, 4].map(i => <div key={i} className={`h-16 rounded-2xl animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />) : 
+                        {gradesLoading ? [1, 2, 3, 4].map(i => <div key={i} className={`h-16 rounded-2xl animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-200'}`} />) :
                             grades?.map((en, i) => (
                                 <div key={i} onClick={() => setViewing(en)} className={`p-5 rounded-2xl cursor-pointer border flex justify-between items-center transition-all duration-300 ${viewing === en ? 'bg-[#800000] border-[#facc15]/50 text-white shadow-xl' : cardClass + ' hover:border-[#800000]/50'}`}>
                                     <div>
