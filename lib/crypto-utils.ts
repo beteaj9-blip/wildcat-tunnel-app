@@ -11,21 +11,19 @@ export function encryptPayload(data: any): string {
 }
 
 export function decryptPayload(encryptedStr: string): any {
+    if (!encryptedStr) return null;
     try {
         const bytes = CryptoJS.AES.decrypt(encryptedStr, INTERNAL_APP_KEY);
-        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-    } catch (e) {
-        return null;
-    }
+        const decoded = bytes.toString(CryptoJS.enc.Utf8);
+        return JSON.parse(decoded);
+    } catch (e) { return null; }
 }
 
 export function encrypt(data: object): string {
     const key = CryptoJS.SHA256(CIT_AES_KEY_TEXT);
     const iv = CryptoJS.enc.Utf8.parse(CIT_AES_KEY_TEXT.substring(0, 16));
     const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), key, {
-        iv: iv,
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
+        iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7
     });
     return encrypted.toString();
 }
@@ -36,9 +34,7 @@ export function decrypt(cipherText: string): any {
         const key = CryptoJS.SHA256(CIT_AES_KEY_TEXT);
         const iv = CryptoJS.enc.Utf8.parse(CIT_AES_KEY_TEXT.substring(0, 16));
         const decrypted = CryptoJS.AES.decrypt(cipherText.trim(), key, {
-            iv: iv,
-            mode: CryptoJS.mode.CBC,
-            padding: CryptoJS.pad.Pkcs7
+            iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7
         });
         return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
     } catch (e) { return null; }
@@ -49,7 +45,6 @@ export function getHmacHeaders(method: string) {
     const salt = CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Base64);
     const message = `${nonce}:studentportal:${method.toUpperCase()}:${salt}:${CIT_H_VALUE}`;
     const signature = CryptoJS.HmacSHA256(message, CIT_HMAC_SECRET).toString(CryptoJS.enc.Hex);
-    
     return {
         "X-HMAC-Signature": signature,
         "X-HMAC-Nonce": nonce,

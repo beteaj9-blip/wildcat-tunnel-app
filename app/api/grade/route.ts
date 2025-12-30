@@ -21,7 +21,7 @@ export async function GET(req: Request) {
         const rawText = await res.text();
         const citData = decrypt(rawText);
 
-        if (!citData) return NextResponse.json({ error: "Access Denied" }, { status: 500 });
+        if (!citData) return NextResponse.json({ error: "Session Expired" }, { status: 401 });
 
         return NextResponse.json({ payload: encryptPayload(citData) });
     } catch (err: any) {

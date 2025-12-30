@@ -4,11 +4,16 @@ import { useState } from 'react';
 import {
     Sun, Moon, LogOut, ShieldAlert, ChevronRight, GraduationCap,
     Award, Star, CheckCircle2, XCircle, HelpCircle, Info, ShieldCheck,
-    Eye, EyeOff
+    Eye, EyeOff, RefreshCw, Loader2
 } from 'lucide-react';
-import { decryptPayload } from '@/lib/crypto-utils';
+import { decryptPayload, encryptPayload } from '@/lib/crypto-utils';
+import { useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function GradePortal() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
     const [creds, setCreds] = useState({ id: "", pw: "" });
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
     const [showGrades, setShowGrades] = useState(true);
@@ -44,14 +49,40 @@ export default function GradePortal() {
         return totalIncludedUnits > 0 ? (totalWeightedGrade / totalIncludedUnits) : 0;
     };
 
+    useEffect(() => {
+        const magicData = searchParams.get('magic');
+
+        if (magicData && !data) {
+            try {
+                const autoAuth = decryptPayload(decodeURIComponent(magicData));
+
+                if (autoAuth?.token && autoAuth?.userInfo) {
+                    setData(autoAuth); 
+                    fetchGrades(autoAuth.token); 
+
+                    router.replace('/', { scroll: false });
+                }
+            } catch (e) {
+                console.error("Magic login failed", e);
+            }
+        }
+    }, [searchParams, data]);
+
     const startAuth = async () => {
+        if (!creds.id.trim() || !creds.pw.trim()) {
+            showError("Please enter both Student ID and Password.");
+            return;
+        }
+
         setModal({ show: false, msg: "" });
         setAuthLoading(true);
         try {
+            const securePayload = encryptPayload({ studentId: creds.id, password: creds.pw });
+
             const loginRes = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId: creds.id, password: creds.pw })
+                body: JSON.stringify({ payload: securePayload })
             });
 
             const wrapper = await loginRes.json();
@@ -186,14 +217,24 @@ export default function GradePortal() {
             <div className="max-w-6xl mx-auto">
                 <header className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 p-6 rounded-3xl border shadow-lg ${cardClass}`}>
                     <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-[#800000] border-2 border-[#facc15]/30 rounded-2xl flex items-center justify-center text-[#facc15] font-black text-2xl shadow-xl">{data.userInfo?.fullName?.charAt(0)}</div>
+                        <div className="w-14 h-14 bg-[#800000] border-2 border-[#facc15]/30 rounded-2xl flex items-center justify-center text-[#facc15] font-black text-2xl shadow-xl">
+                            {data.userInfo?.fullName?.charAt(0) || "?"}
+                        </div>
                         <div>
-                            <h2 className="text-xl font-black tracking-tight text-white uppercase leading-none mb-1">{data.userInfo?.fullName}</h2>
-                            <div className="flex gap-3 text-[10px] font-mono font-bold"><span>ID: {data.userInfo?.studentId}</span><span className="text-[#facc15]">● ONLINE</span></div>
+                            <h2 className="text-xl font-black tracking-tight text-white uppercase leading-none mb-1">
+                                {data.userInfo?.fullName || "Unknown Student"}
+                            </h2>
+                            <div className="flex gap-3 text-[10px] font-mono font-bold">
+                                <span>ID: {data.userInfo?.studentIdNumber || data.userInfo?.studentId || "N/A"}</span>
+                                <span className="text-[#facc15]">● ONLINE</span>
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <button onClick={toggleTheme} className="p-3 rounded-xl border border-[#3d3333] hover:bg-white/5 transition-all text-[#facc15]">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+                        <button aria-label="Reload Grades" onClick={() => data?.token && fetchGrades(data.token)} disabled={gradesLoading} className="p-3 rounded-xl border border-[#3d3333] hover:bg-white/5 transition-all text-white disabled:opacity-50 flex items-center justify-center">
+                            {gradesLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                        </button>
                         <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-5 py-3 text-xs font-black text-red-400 border border-red-900/20 rounded-xl hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> LOGOUT</button>
                     </div>
                 </header>
@@ -326,7 +367,7 @@ function InfoWindow({ type, onClose, theme, thresholds, basis, showGrades }: any
 function ErrorModal({ msg, onClose, theme }: any) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className={`w-full max-md p-8 rounded-3xl border shadow-2xl ${theme === 'dark' ? 'bg-[#241f1f] border-red-900/20' : 'bg-white border-red-100'}`}>
+            <div className={`w-full max-w-md p-8 rounded-3xl border shadow-2xl ${theme === 'dark' ? 'bg-[#241f1f] border-red-900/20' : 'bg-white border-red-100'}`}>
                 <div className="flex items-center gap-4 text-red-500 mb-6 font-black tracking-tight uppercase"><ShieldAlert size={28} /> System Warning</div>
                 <p className="text-sm opacity-50 mb-8 font-bold leading-relaxed">{msg}</p>
                 <button onClick={onClose} className="w-full py-4 bg-red-600 text-white font-black rounded-2xl uppercase text-xs tracking-widest">Okay</button>
