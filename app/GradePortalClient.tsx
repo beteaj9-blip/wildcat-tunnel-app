@@ -63,7 +63,7 @@ export default function GradePortal() {
                     router.replace('/', { scroll: false });
                 }
             } catch (e) {
-                console.error("Magic login failed", e);
+                // console.error("Magic login failed", e);
             }
         }
     }, [searchParams, data]);
