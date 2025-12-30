@@ -214,7 +214,7 @@ export default function GradePortal() {
                 />
             )}
 
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto">
                 <header className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 p-6 rounded-3xl border shadow-lg ${cardClass}`}>
                     <div className="flex items-center gap-5">
                         <div className="w-14 h-14 bg-[#800000] border-2 border-[#facc15]/30 rounded-2xl flex items-center justify-center text-[#facc15] font-black text-2xl shadow-xl">
@@ -301,7 +301,7 @@ export default function GradePortal() {
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
                                             <thead className={`text-[10px] uppercase font-black tracking-widest ${theme === 'dark' ? 'bg-[#1a1616]' : 'bg-gray-100'} border-b border-inherit`}>
-                                                <tr><th className="px-8 py-5 text-[#facc15]">Code</th><th className="px-8 py-5 text-white">Subject</th><th className="px-8 py-5 text-center">Units</th><th className="px-8 py-5 text-center text-[#facc15]">Midterm</th><th className="px-8 py-5 text-center text-[#ff8080]">Final</th><th className="px-8 py-5 text-center text-white">Status</th></tr>
+                                                <tr><th className="px-8 py-5 text-[#facc15]">Code</th><th className="px-8 py-5 text-white">Subject</th><th className="px-8 py-5 text-center">Units</th><th className="px-8 py-5 text-white">Professor</th><th className="px-8 py-5 text-center text-[#facc15]">Midterm</th><th className="px-8 py-5 text-center text-[#ff8080]">Final</th><th className="px-8 py-5 text-center text-white">Status</th></tr>
                                             </thead>
                                             <tbody className="divide-y divide-[#3d3333]">
                                                 {(viewing.enrolledCourseGradeDetails || viewing.studentGradeHistoryData || []).map((c: any, i: number) => {
@@ -314,6 +314,7 @@ export default function GradePortal() {
                                                             <td className="px-8 py-5 font-mono text-[#facc15] text-[11px] font-black">{c.courseCode}</td>
                                                             <td className="px-8 py-5 text-xs font-bold text-gray-300">{c.courseTitle}</td>
                                                             <td className="px-8 py-5 text-center text-[11px] font-bold opacity-30">{c.units}</td>
+                                                            <td className="px-8 py-5 text-xs font-semibold text-gray-400 line-clamp-2">{c.professor || "-"}</td>
                                                             <td className={`px-8 py-5 text-center font-mono text-xs transition-all duration-500 ${!showGrades && midterm !== "-" ? 'blur-[3px] opacity-30 select-none' : getGradeColor(midterm, true)}`}>{midterm}</td>
                                                             <td className={`px-8 py-5 text-center font-black text-xs transition-all duration-500 ${!showGrades ? 'blur-[3px] opacity-30 select-none' : getGradeColor(finalGrade, false)}`}>{finalGrade || "-"}</td>
                                                             <td className="px-8 py-5 text-center">
