@@ -49,6 +49,8 @@ export function getHmacHeaders(method: string) {
         "X-HMAC-Signature": signature,
         "X-HMAC-Nonce": nonce,
         "X-HMAC-Salt": salt,
-        "X-Origin": "studentportal"
+        "X-Origin": "studentportal",
+        "Origin": "https://student.cituwits.com",
+        "Referer": "https://student.cituwits.com/"
     };
 }
